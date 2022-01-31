@@ -47,8 +47,6 @@ type userid.
 type key.
 fun senc(bitstring, key): bitstring.
 reduc forall m: bitstring, k: key; sdec(senc(m,k),k) = m.
-
-
 fun encpt(bitstring,bitstring): bitstring.
 
 (* Asymmetric key *)
@@ -74,7 +72,7 @@ reduc forall h:host,np:nonce,ns:nonce,ms:key;
 KeyGen(h,np,ns,ms)=PRF((h,ms,np,ns)).
 fun HSH(bitstring): bitstring.
 fun H(epkey): bitstring.
-(*New functions from here for DPP*)
+
 fun concat(bitstring, epkey): bitstring.
 fun concatstr(bitstring, bitstring): bitstring.
 fun concatstrs(nonce, nonce, epkey, epkey, epkey, bitstring): bitstring.
@@ -151,7 +149,7 @@ let ke= HKDFextractkey(bk,dppkylen) in
 if HSH( concatstrs(Ni,Nr,epk(spI),ppR,pbR,cnst0) )=sdec(enc_rauth,ke) then
 let Iauth=HSH( concatstrs(Nr,Ni,ppR,epk(spI),pbR,cnst1) ) in
 new dpp_status_i:bitstring;
-event acceptConfigEnrolleeKey1(ke) ;(* configurated authenticate that he has Accepted the protocol run with employee1 with key ke*)
+event acceptConfigEnrolleeKey1(ke) ;
 out(c, (dpp_status_i,H(pbR),H(epk(sbI)), senc(Iauth,ke) ));
 in(c, (enc_config_request:bitstring));
 let (Ne:nonce,configAtrributes:bitstring)=sdec(enc_config_request,ke) in
@@ -186,7 +184,7 @@ let bk= HKDFextract(concatnonce(Ni,Nr),concatstr(Me,N)) in
 let ke= HKDFextractkey(bk,dppkylen) in
 let Rauth=HSH( concatstrs(Ni,Nr,ppI,epk(spR),epk(sbR),cnst0) ) in
 new capr:bitstring;
-event acceptEnrollee1(ke1);(*here configur authentication*)
+event acceptEnrollee1(ke1);
 out(c, (dpp_status_e,H(epk(sbR)),H(pbI),epk(spR), senc( (Nr,Ni,capr,senc(Rauth,ke)), k2) ));
 in(c, (dpp_status_i:bitstring,=H(epk(sbR)),=H(pbI), enc_iauth:bitstring) );
 let (iauth_hsh)=sdec(enc_iauth,ke) in
@@ -203,6 +201,6 @@ out(c, (senc( (dpp_config_status_r, Ne), ke)));
 out(c,(senc(keempl1Scrt,ke1)));
 out(c,(encpt(configobjectScrt,configObject)));
 
-event termEnrollee1(ke);(*enrollee1 has terminated the protocol run with configurator with symmetric ket ke*)
+event termEnrollee1(ke);
 
 0.

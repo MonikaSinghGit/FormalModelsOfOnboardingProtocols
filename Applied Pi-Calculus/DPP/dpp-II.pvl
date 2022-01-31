@@ -51,7 +51,6 @@ type host.
 (* Symmetric key encryption *)
 type key.
 fun senc(bitstring, key): bitstring.
-
 reduc forall m: bitstring, k: key; sdec(senc(m,k),k) = m.
 
 (* Asymmetric key *)
@@ -65,9 +64,7 @@ reduc forall m: bitstring, sk: skey; adec(aenc(m,pk(sk)),sk) = m.
 type sskey.
 type spkey.
 fun spk(sskey): spkey.
-
 fun sign(bitstring, skey): bitstring.
-
 reduc forall m: bitstring, sk: skey; getmess(sign(m,sk)) = m.
 reduc forall m: bitstring, sk: skey; checksign(sign(m,sk),pk(sk)) = m.
 fun PRF(bitstring): key.
@@ -99,16 +96,10 @@ const ClientK_secr:bitstring [private].
 const ServerK_secr:bitstring [private].
 const ServerK_m_secr:bitstring [private].
 const ClientK_m_secr:bitstring [private].
-(*const Voucher:bitstring [private]. *)
 
 
-(*const SessionID:bitstring.*)
-(*free Sid:bitstring.
-free Pa:bitstring.*)
 free hostC,hostE1,hostE2:host.
 free Sn,Issuer:bitstring.
-(*free k1,PMSm:bitstring[private].*)
-
 free keScrt,ke2Scrt,keempl1Scrt,keempl2Scrt:bitstring[private].
 
 

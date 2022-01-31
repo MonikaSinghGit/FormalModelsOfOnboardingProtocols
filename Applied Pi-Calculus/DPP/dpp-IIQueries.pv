@@ -32,4 +32,4 @@ let ppR1 = pk(spR1) in out(c,ppR1);
 let pbR2 = pk(sbR2) in out(c,pbR2);
 let ppR2 = pk(spR2) in out(c,ppR2);
 
-((Configurator(hostC,skC,pkCA,sbI,spI,pbR1,ppR1,pbR2,ppR2)) | (Enrollee1(hostE1,skE1,pkCA,sbR1,spR1,pbI,ppI)) | (Enrollee2(hostE2,pkCA,sbR2,spR2,pbI,ppI)) ) (*| (!procCA(skCA)) *)
+((Configurator(hostC,skC,pkCA,sbI,spI,pbR1,ppR1,pbR2,ppR2)) | (Enrollee1(hostE1,skE1,pkCA,sbR1,spR1,pbI,ppI)) | (Enrollee2(hostE2,pkCA,sbR2,spR2,pbI,ppI)) ) 

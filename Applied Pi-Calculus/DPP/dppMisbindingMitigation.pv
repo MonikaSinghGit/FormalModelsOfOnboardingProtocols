@@ -1,5 +1,5 @@
 (*
-This is DPP misbidinding attack and prvention
+DPP misbidinding prvention shown on the identity misbidinding attack shown by Peltonen et.al. in 'Formal verification of misbinding attacks on secure device pairing and bootstrapping'
 *)
 set preciseActions = true.
 set traceDisplay=long.
@@ -38,7 +38,7 @@ reduc forall h:host,np:nonce,ns:nonce,ms:key;
 KeyGen(h,np,ns,ms)=PRF((h,ms,np,ns)).
 fun HSH(bitstring): bitstring.
 fun H(pkey): bitstring.
-(*New functions from here for DPP*)
+
 fun concat(bitstring, pkey): bitstring.
 fun concatstr(bitstring, bitstring): bitstring.
 fun concatstrs(nonce, nonce, pkey, pkey, pkey, bitstring): bitstring.
@@ -64,9 +64,6 @@ const ClientK_secr:bitstring [private].
 const ServerK_secr:bitstring [private].
 const ServerK_m_secr:bitstring [private].
 const ClientK_m_secr:bitstring [private].
-(*const Voucher:bitstring [private]. *)
-
-
 
 free Sn,Issuer:bitstring.
 free keScrt,ke2Scrt,keempl1Scrt,keempl2Scrt,Rauth,Iauth:bitstring[private].

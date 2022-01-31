@@ -1,0 +1,227 @@
+%Device Provisioning Protocol (DPP-I) is a Wi-Fi Alliance specification and also known
+%as 'Wi-Fi CERTIFIED Easy Connect™'. The protocol aims to provide a user-friendly way
+%to provision diverse IoT devices to secure Wi-Fi securely. DPP refers the new
+%out-of-the-box device as Enrollee. A logical entity that configures the enrollee
+%to the secure Wi-Fi is called Configurator . It could be an application on a device.
+%DPP uses four sub-protocols and works in the following phases:
+%1. Bootstrapping: The enrollee announces its presence by sending its Bootstrapping-public
+%   key (and some metadata) to the configurator using an out-of-the-band mechanism. It can
+%   be done by scanning a QR code, an NFC tap, or a bluetooth exchange.
+%2. Authentication Protocol: DPP defines two roles 'Initiator' and 'Responder'. Either
+%   configurator or enrollee can act as initiator and initiate the authentication phase.
+%   We have considered configurator as an initiator for implementation purposes in this paper.
+%   Both configurator and enrollee have two public-private key pairs: bootstrapping and protocol
+%   keys. In this phase configurator and enrollee perform an ECDH (Elliptic-curve Diffie–Hellman)
+%   handshake using the public-private key pairs to establish a common secret session key. After
+%   receiving the enrollee's presence announcement configurator initiates the authentication by
+%   sending a DPP-authentication-request encrypted by an ephemeral intermediate ECDH key. The
+%   authentication request contains a nonce. The enrollee returns the nonce as part of its DPP-
+%   authentication-response and proves that it possess the private key corresponding to the
+%   bootstrapping public received by the configurator in bootstrapping phase. After receiving the
+%   correct nonce, the configurator sends a DPP- authentication-confirm message and authenticates
+%   the enrollee.
+%3. Configuration Protocol: Once the enrollee is authenticated, it sends a DPP configuration request
+%   (requesting configurator for its configuration information) encrypted by the session key. The
+%   configurator responds with the configuration credential in the form of a configuration object
+%   secured by the session key. The configuration object could be a passphrase, password, or a DPP
+%   connector. In our implementations, the DPP connector has been taken as the configuration object.
+%	DPP connector is basically a certificate from the configurator, containing the public-protocol
+%   key of the enrollee signed by the configurator. Using this, the enrollee can connect to the
+%   network and the other devices on the network.
+
+
+
+role configurator(C, E : agent,
+	   Mx, Nx, Lx: symmetric_key,  
+           H : hash_func,
+           Bi, Pi, Kca: public_key,  %% Kca is the public key of a T3P (ie. CA)
+           SND, RCV: channel (dy))
+played_by C
+def=
+
+   local Ni, Nc, Nr, Ne, Sid, Pa, PMS: text,
+	 Channellist, Capi, Capr, Pver: text,
+	 K1,K2: hash(text.text.symmetric_key),
+	 Bk: hash(text.text.symmetric_key.symmetric_key.symmetric_key),
+	 Ke: hash(hash(text.text.symmetric_key.symmetric_key.symmetric_key).text.nat),
+         State: nat,
+         Br, Pr: public_key,
+         M: hash(text.text.text),
+	 Configreq,Configpayrol,Sendconnstatus : text,
+	 Iauth : hash(text.text.public_key.public_key.public_key.public_key.nat),
+	 Rauth : hash(text.text.public_key.public_key.public_key.public_key.nat)
+
+   const sec_k1, sec_iauth, auth_ni, auth_nr : protocol_id,
+	 chirp  : text,
+	 first_intermediate_key, second_intermediate_key, dpp_status : text,
+	 salt : text,
+	 len : nat
+
+   init  State := 1
+
+   transition
+
+   1.  State = 1
+       /\ RCV(H(chirp.Br'))
+       =|>
+       State' := 3
+		/\ Ni':= new()
+		/\ Channellist' := new()
+		/\ Capi' := new()
+		/\ Pver':= new()	
+		/\ K1' := H(salt.first_intermediate_key.Mx)
+		/\ SND(H(Br).H(Bi).Pi.Pver'.Channellist'.{Ni'.Capi'}_K1')
+		/\ secret(K1,sec_k1,{C,E})
+		/\ witness(C,E,auth_ni,Ni)
+
+  3.  State = 3
+		/\ RCV(H(Br').H(Bi').Pr'.Pver'.{Nr'.Ni'.Capr'.{Rauth'}_K2'}_Ke')
+		/\ Rauth'=H(Ni'.Nr'.Pi.Pr.Bi.Br.0)
+		/\ K2' = H(salt.second_intermediate_key.Nx)
+		/\ Ke' = H(H(Ni.Nr.Mx.Nx.Lx).dpp_status.len)
+		=|>
+		State' := 5
+		/\ Iauth' := H(Nr.Ni.Pr.Pi.Br.Bi.1)
+		/\ SND(H(Br).H(Bi).{Iauth'}_Ke')
+		/\ secret(Iauth,sec_iauth,{C,E})
+		/\ request(C,E,auth_nr,Nr)
+  5.  State = 5
+		/\ RCV({Ne'.Configreq'}_Ke')
+		=|> 
+		State' :=7
+		/\ Configpayrol' := new()
+		/\ Sendconnstatus' := new()
+		/\ SND({Ne'.Configpayrol'.Sendconnstatus'}_Ke)
+  7.  State = 7
+		/\ RCV({Ne'}_Ke')
+		=|> State':=9
+       
+
+
+
+end role
+
+
+
+role enrollee(C, E : agent,
+	 Mx, Nx, Lx: symmetric_key,
+         H : hash_func,
+         Br, Pr, Kca: public_key,
+         SND, RCV: channel (dy))
+played_by E
+def=
+
+   local Ni, Nr, Na, Nb, Ne, Sid, Pa, PMS: text,
+	 Channellist, Capi, Capr, Pver: text, 
+	 K1, K2: hash(text.text.symmetric_key),
+	 Bk: hash(text.text.symmetric_key.symmetric_key.symmetric_key),
+	 Ke: hash(hash(text.text.symmetric_key.symmetric_key.symmetric_key).text.nat),
+         State: nat,
+	 Bi, Pi : public_key,
+	 Configreq, Configpayrol, Sendconnstatus : text,
+	 Iauth : hash(text.text.public_key.public_key.public_key.public_key.nat),
+	 Rauth : hash(text.text.public_key.public_key.public_key.public_key.nat)
+
+   const sec_nr, sec_k2, sec_rauth, sec_ne, auth_ni, auth_nr : protocol_id,
+	 chirp  : text, 
+	 first_intermediate_key, second_intermediate_key, dpp_status : text,
+	 salt : text,
+	 len : nat
+
+   init  State := 0
+
+   transition
+
+   0.  State = 0 /\ RCV(start)
+       =|>
+       State' := 2
+       %/\ Chirp' := 'Chirping'
+       /\ SND(H(chirp.Br))
+   2. State = 2 /\ RCV(H(Br').H(Bi').Pi'.Pver'.Channellist'.{Ni'.Capi'}_K1')
+		/\ K1' = H(salt.first_intermediate_key.Mx)
+		=|> 
+		State' := 4
+		/\ Nr' := new() 
+		/\ Capr' := new()
+		/\ Rauth' :=H(Ni'.Nr'.Pi.Pr.Bi.Br.0)
+		/\ K2' := H(salt.second_intermediate_key.Nx)
+		/\ Bk' := H(Ni.Nr.Mx.Nx.Lx)
+		/\ Ke' := H(H(Ni.Nr.Mx.Nx.Lx).dpp_status.len)
+		/\ SND(H(Br).H(Bi').Pr.Pver'.{Nr'.Ni'.Capr'.{Rauth'}_K2'}_Ke')	
+		/\ secret(K2,sec_k2,{E,C})
+		/\ witness(E,C,auth_nr,Nr)
+				
+  4.  State = 4 /\ RCV(H(Br').H(Bi').{Iauth'}_Ke')
+		/\ Iauth' = H(Nr.Ni.Pr.Pi.Br.Bi.1)
+		=|>
+		State' := 6
+		/\ Ne' := new()
+		/\ Configreq' := new()
+		/\ SND ({Ne'.Configreq'}_Ke)
+		/\ secret(Ne,sec_ne,{E,C})
+		/\ request(E,C,auth_ni,Ni)
+	
+
+  6.  State = 6 /\ RCV({Ne'.Configpayrol'.Sendconnstatus'}_Ke')
+		=|>
+		State' := 8
+		/\ SND({Ne}_Ke)
+		
+       
+
+
+end role
+
+
+
+role session(C,E: agent,
+	     Mx, Nx, Lx: symmetric_key,
+             H : hash_func,
+             Bi, Pi, Br, Pr, Kca: public_key)
+def=
+
+   local  SC, SR, RC, RR: channel (dy)
+
+   composition
+
+
+                configurator(C,E,Mx,Nx,Lx,H,Bi,Pi,Kca,SC,RC)
+              /\    enrollee(C,E,Mx,Nx,Lx,H,Br,Pr,Kca,SR,RR)
+
+end role
+
+
+
+role environment()
+def=
+
+   const na_nb1, na_nb2      : protocol_id,
+         c, e                : agent,
+	 mx, nx, lx: symmetric_key,
+         h     : hash_func,
+         bi, pi, br, pr, kca, ki, kib, kip : public_key
+
+   intruder_knowledge = { c, e, bi, pi, br, pr, kca, ki, kib, kip, inv(ki), inv(kib), inv(kip),
+                          {i.ki}_(inv(kca)) }  
+
+   composition
+        session(c,e,mx,nx,lx,h,bi,pi,br,pr,kca)
+%   /\  session(c,e,mx,nx,lx,h,bi,pi,br,pr,kca)
+%   /\  session(i,e,mx,nx,lx,h,kib,kip,br,pr,kca)
+%   /\  session(c,i,mx,nx,lx,h,bi,pi,kib,kip,kca)
+
+end role
+
+
+
+goal
+
+  secrecy_of sec_k1, sec_k2, sec_iauth, sec_ne  
+  authentication_on auth_ni, auth_nr  
+  authentication_on na_nb2  
+  
+end goal
+
+
+
+environment()
